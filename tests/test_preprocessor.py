@@ -79,7 +79,7 @@ class TestPreprocess:
         assert any("ゼロ" in w for w in result.warnings)
 
     def test_short_series_warning(self, tmp_dir: Path):
-        rows = [(f"2024-01-{i+1:02d}", i) for i in range(10)]
+        rows = [(f"2024-01-{i + 1:02d}", i) for i in range(10)]
         p = make_csv(tmp_dir, rows)
         result = preprocess(p, datetime_col="timestamp", value_col="value", freq="D")
         assert any("少ない" in w or "少なすぎ" in w for w in result.warnings)

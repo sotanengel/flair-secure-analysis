@@ -89,12 +89,14 @@ def upload():
     # CSV の列名だけ取得して返す（設定画面で使用）
     columns = _get_csv_columns(dest)
 
-    return jsonify({
-        "job_id": job_id,
-        "filename": safe_name,
-        "size_bytes": size,
-        "columns": columns,
-    })
+    return jsonify(
+        {
+            "job_id": job_id,
+            "filename": safe_name,
+            "size_bytes": size,
+            "columns": columns,
+        }
+    )
 
 
 # ── API: ジョブ実行 ──────────────────────────────────────────────────────────
@@ -127,17 +129,29 @@ def run_job():
 
     python = str(Path(sys.executable))
     cmd = [
-        python, "-m", "worker.main",
-        "--input", input_path,
-        "--job-id", job_id,
-        "--datetime-col", datetime_col,
-        "--value-col", value_col,
-        "--horizon", str(horizon),
-        "--seed", str(seed),
-        "--n-samples", str(n_samples),
-        "--missing", missing,
-        "--output-dir", str(OUTPUT_DIR),
-        "--log-dir", str(LOG_DIR),
+        python,
+        "-m",
+        "worker.main",
+        "--input",
+        input_path,
+        "--job-id",
+        job_id,
+        "--datetime-col",
+        datetime_col,
+        "--value-col",
+        value_col,
+        "--horizon",
+        str(horizon),
+        "--seed",
+        str(seed),
+        "--n-samples",
+        str(n_samples),
+        "--missing",
+        missing,
+        "--output-dir",
+        str(OUTPUT_DIR),
+        "--log-dir",
+        str(LOG_DIR),
     ]
     if freq:
         cmd += ["--freq", freq]
@@ -183,11 +197,13 @@ def job_status(job_id: str):
             try:
                 entry = json.loads(line)
                 if entry.get("job_id") == job_id and entry.get("event") == "job_failure":
-                    return jsonify({
-                        "job_id": job_id,
-                        "status": "failed",
-                        "error": entry.get("error_summary", "不明なエラー"),
-                    })
+                    return jsonify(
+                        {
+                            "job_id": job_id,
+                            "status": "failed",
+                            "error": entry.get("error_summary", "不明なエラー"),
+                        }
+                    )
             except json.JSONDecodeError:
                 continue
 
@@ -228,8 +244,9 @@ def job_forecast_csv(job_id: str):
     forecast_path = OUTPUT_DIR / job_id / "forecast.csv"
     if not forecast_path.exists():
         return jsonify({"error": "CSVが見つかりません"}), 404
-    return send_file(str(forecast_path), mimetype="text/csv",
-                     as_attachment=True, download_name="forecast.csv")
+    return send_file(
+        str(forecast_path), mimetype="text/csv", as_attachment=True, download_name="forecast.csv"
+    )
 
 
 # ── API: グラフ画像 ──────────────────────────────────────────────────────────
@@ -296,14 +313,16 @@ def list_jobs():
         else:
             status = "running"
 
-        jobs.append({
-            "job_id": jid,
-            "status": status,
-            "input_filename": start.get("input_filename", ""),
-            "started_at": start.get("started_at", ""),
-            "finished_at": success.get("finished_at") or failure.get("finished_at") or "",
-            "warnings": success.get("warnings", []),
-        })
+        jobs.append(
+            {
+                "job_id": jid,
+                "status": status,
+                "input_filename": start.get("input_filename", ""),
+                "started_at": start.get("started_at", ""),
+                "finished_at": success.get("finished_at") or failure.get("finished_at") or "",
+                "warnings": success.get("warnings", []),
+            }
+        )
 
     # 新しい順
     jobs.sort(key=lambda x: x["started_at"], reverse=True)
@@ -314,6 +333,7 @@ def list_jobs():
 @app.route("/api/jobs/<job_id>", methods=["DELETE"])
 def delete_job(job_id: str):
     import shutil
+
     if not _is_safe_job_id(job_id):
         return jsonify({"error": "無効な job_id"}), 400
 
@@ -329,6 +349,7 @@ def delete_job(job_id: str):
 # ── ヘルパー ─────────────────────────────────────────────────────────────────
 def _sanitize_filename(name: str) -> str:
     import re
+
     n = Path(name).name
     n = re.sub(r"[^a-zA-Z0-9._\-]", "_", n)
     return n or "input.csv"
@@ -343,6 +364,7 @@ def _is_safe_job_id(job_id: str) -> bool:
 
 def _get_csv_columns(path: Path) -> list[str]:
     import csv as csv_mod
+
     try:
         with path.open("r", encoding="utf-8", errors="replace") as f:
             reader = csv_mod.reader(f)

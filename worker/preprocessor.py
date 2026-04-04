@@ -131,9 +131,7 @@ def preprocess(
     # --- 重複タイムスタンプ除去 ---
     dup_count = df.duplicated(subset=["_dt"]).sum()
     if dup_count > 0:
-        warnings.append(
-            f"重複タイムスタンプを {dup_count} 件検出しました。最初の値を使用します。"
-        )
+        warnings.append(f"重複タイムスタンプを {dup_count} 件検出しました。最初の値を使用します。")
         df = df.drop_duplicates(subset=["_dt"], keep="first").reset_index(drop=True)
 
     index = pd.DatetimeIndex(df["_dt"])

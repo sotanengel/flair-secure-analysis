@@ -103,26 +103,18 @@ def validate_file(
         if len(columns) == 0:
             raise ValidationError("CSV の列数が 0 です")
         if len(columns) > MAX_COLUMNS:
-            raise ValidationError(
-                f"列数が上限を超えています: {len(columns)} (上限 {MAX_COLUMNS})"
-            )
+            raise ValidationError(f"列数が上限を超えています: {len(columns)} (上限 {MAX_COLUMNS})")
 
         for _row in reader:
             row_count += 1
             if row_count > MAX_ROWS:
-                raise ValidationError(
-                    f"行数が上限を超えています (上限 {MAX_ROWS:,} 行)"
-                )
+                raise ValidationError(f"行数が上限を超えています (上限 {MAX_ROWS:,} 行)")
 
     # 列名の存在チェック
     if datetime_col and datetime_col not in columns:
-        raise ValidationError(
-            f"日時列 {datetime_col!r} が見つかりません。利用可能な列: {columns}"
-        )
+        raise ValidationError(f"日時列 {datetime_col!r} が見つかりません。利用可能な列: {columns}")
     if value_col and value_col not in columns:
-        raise ValidationError(
-            f"値列 {value_col!r} が見つかりません。利用可能な列: {columns}"
-        )
+        raise ValidationError(f"値列 {value_col!r} が見つかりません。利用可能な列: {columns}")
 
     return {
         "sha256": sha256,

@@ -23,10 +23,10 @@ PERIODICITY_CV_THRESHOLD = 0.3  # 周期性なし疑い閾値（CV < この値 �
 class ForecastResult:
     """予測結果。"""
 
-    point: np.ndarray        # 点推定 (horizon,)
-    lower: np.ndarray        # 下限 10パーセンタイル (horizon,)
-    upper: np.ndarray        # 上限 90パーセンタイル (horizon,)
-    samples: np.ndarray      # 全サンプル (n_samples, horizon)
+    point: np.ndarray  # 点推定 (horizon,)
+    lower: np.ndarray  # 下限 10パーセンタイル (horizon,)
+    upper: np.ndarray  # 上限 90パーセンタイル (horizon,)
+    samples: np.ndarray  # 全サンプル (n_samples, horizon)
     horizon: int
     freq: str
     seed: int

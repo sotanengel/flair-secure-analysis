@@ -4,14 +4,15 @@ PROJECT_DIR := $(shell pwd)
 IMAGE_NAME   := flair-secure-analysis
 IMAGE_TAG    := latest
 
-.PHONY: help install build run test lint smoke ui clean
+.PHONY: help install build run test lint pre-commit smoke ui clean
 
 help: ## このヘルプを表示する
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-install: ## Python 依存パッケージをインストールする (uv sync)
+install: ## Python 依存パッケージをインストールする (uv sync + pre-commit install)
 	uv sync
+	uv run pre-commit install
 
 build: ## コンテナイメージをビルドする
 	./scripts/build-image.sh
@@ -32,8 +33,11 @@ test: ## pytest でテストを実行する
 	uv run pytest tests/ -v
 
 lint: ## ruff でコードチェックする
-	uv run ruff check worker/ tests/
-	uv run ruff format --check worker/ tests/
+	uv run ruff check worker/ ui/ tests/
+	uv run ruff format --check worker/ ui/ tests/
+
+pre-commit: ## pre-commit フックを全ファイルに実行する
+	uv run pre-commit run --all-files
 
 ui: ## Web UI を起動する (http://127.0.0.1:5000)
 	./scripts/run-ui.sh

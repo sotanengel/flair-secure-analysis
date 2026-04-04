@@ -68,12 +68,14 @@ def save_results(
             forecast_result.lower,
             forecast_result.upper,
         ):
-            writer.writerow([
-                ts.isoformat(),
-                round(float(pt), 6),
-                round(float(lo), 6),
-                round(float(hi), 6),
-            ])
+            writer.writerow(
+                [
+                    ts.isoformat(),
+                    round(float(pt), 6),
+                    round(float(lo), 6),
+                    round(float(hi), 6),
+                ]
+            )
     saved.append(str(forecast_csv))
 
     # --- report.json ---
@@ -202,6 +204,7 @@ def _save_chart(
     """予測結果の折れ線グラフを PNG で保存する。失敗時は None を返す。"""
     try:
         import matplotlib
+
         matplotlib.use("Agg")  # GUI なし（サーバー環境）
         import matplotlib.dates as mdates
         import matplotlib.pyplot as plt
@@ -216,8 +219,12 @@ def _save_chart(
         ax.plot(hist_idx, hist_y, color="#4A90D9", linewidth=1.2, label="Historical")
         ax.plot(future_index, point, color="#E05A2B", linewidth=1.5, label="Forecast (median)")
         ax.fill_between(
-            future_index, lower, upper,
-            color="#E05A2B", alpha=0.2, label="Forecast interval (10-90%)"
+            future_index,
+            lower,
+            upper,
+            color="#E05A2B",
+            alpha=0.2,
+            label="Forecast interval (10-90%)",
         )
 
         # 実績と予測の境界線
