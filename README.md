@@ -151,5 +151,5 @@ make lint   # ruff
 
 ## ライセンス
 
-本プロジェクトのコード: MIT  
+本プロジェクトのコード: [Apache License 2.0](LICENSE)  
 FLAIR (flaircast): MIT
