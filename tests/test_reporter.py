@@ -64,7 +64,8 @@ class TestSaveResults:
             forecast_result=fc,
             config={"horizon": 7, "seed": 42},
         )
-        assert len(files) == 2
+        # forecast.csv + report.json + forecast_chart.png (グラフが生成された場合)
+        assert len(files) >= 2
         for f in files:
             assert Path(f).exists()
 

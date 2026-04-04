@@ -4,7 +4,7 @@ PROJECT_DIR := $(shell pwd)
 IMAGE_NAME   := flair-secure-analysis
 IMAGE_TAG    := latest
 
-.PHONY: help install build run test lint smoke clean
+.PHONY: help install build run test lint smoke ui clean
 
 help: ## このヘルプを表示する
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -34,6 +34,9 @@ test: ## pytest でテストを実行する
 lint: ## ruff でコードチェックする
 	uv run ruff check worker/ tests/
 	uv run ruff format --check worker/ tests/
+
+ui: ## Web UI を起動する (http://127.0.0.1:5000)
+	./scripts/run-ui.sh
 
 smoke: ## smoke-test を実行する（サンプルデータで動作確認）
 	./scripts/smoke-test.sh

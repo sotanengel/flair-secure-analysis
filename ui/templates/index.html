@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>FLAIR セキュア分析</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>🔒 FLAIR セキュア分析</h1>
+      <span class="badge-offline">OFFLINE</span>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" data-tab="upload">📂 ファイル投入</button>
+    <button class="tab-btn" data-tab="settings">⚙️ 設定</button>
+    <button class="tab-btn" data-tab="status">⏳ 実行状況</button>
+    <button class="tab-btn" data-tab="result">📊 結果</button>
+    <button class="tab-btn" data-tab="history">🗂 ジョブ履歴</button>
+  </nav>
+
+  <main>
+    <!-- ─── タブ1: ファイル投入 ─── -->
+    <section id="tab-upload" class="tab-pane active">
+      <h2>CSV ファイルを投入する</h2>
+      <div class="info-box">
+        <strong>許可形式:</strong> CSV &nbsp;|&nbsp;
+        <strong>上限:</strong> 500 MB / 100万行 &nbsp;|&nbsp;
+        <strong>必要列:</strong> 日時列 + 数値列
+      </div>
+
+      <div id="drop-zone">
+        <div class="drop-icon">⬆</div>
+        <p>ここに CSV ファイルをドロップ</p>
+        <p class="drop-sub">または</p>
+        <label class="btn-file">
+          ファイルを選択
+          <input type="file" id="file-input" accept=".csv" hidden>
+        </label>
+      </div>
+
+      <div id="upload-result" class="hidden"></div>
+    </section>
+
+    <!-- ─── タブ2: 設定 ─── -->
+    <section id="tab-settings" class="tab-pane">
+      <h2>分析設定</h2>
+      <div id="settings-no-file" class="warn-box">
+        先にファイルを投入してください。
+      </div>
+      <form id="settings-form" class="hidden">
+        <input type="hidden" id="s-job-id">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>日時列 <span class="req">*</span></label>
+            <select id="s-datetime-col"></select>
+          </div>
+          <div class="form-group">
+            <label>値列 <span class="req">*</span></label>
+            <select id="s-value-col"></select>
+          </div>
+          <div class="form-group">
+            <label>周波数</label>
+            <select id="s-freq">
+              <option value="">自動推定</option>
+              <option value="h">時次 (h)</option>
+              <option value="D">日次 (D)</option>
+              <option value="W">週次 (W)</option>
+              <option value="ME">月次 (ME)</option>
+              <option value="QE">四半期 (QE)</option>
+              <option value="YE">年次 (YE)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>予測ホライズン</label>
+            <input type="number" id="s-horizon" value="24" min="1" max="1000">
+          </div>
+          <div class="form-group">
+            <label>乱数シード</label>
+            <input type="number" id="s-seed" value="42" min="0">
+          </div>
+          <div class="form-group">
+            <label>サンプル数</label>
+            <input type="number" id="s-n-samples" value="200" min="10" max="2000">
+          </div>
+          <div class="form-group">
+            <label>欠損値ポリシー</label>
+            <select id="s-missing">
+              <option value="ffill">前方補完 (ffill)</option>
+              <option value="stop">中断 (stop)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">▶ 分析を実行</button>
+      </form>
+    </section>
+
+    <!-- ─── タブ3: 実行状況 ─── -->
+    <section id="tab-status" class="tab-pane">
+      <h2>実行状況</h2>
+      <div id="status-idle" class="info-box">ジョブが実行されていません。</div>
+      <div id="status-running" class="hidden">
+        <div class="spinner"></div>
+        <p>分析中… <span id="status-elapsed">0</span> 秒</p>
+        <p class="small" id="status-job-id-display"></p>
+      </div>
+      <div id="status-done" class="hidden success-box">
+        ✅ 分析完了！ <button id="btn-goto-result" class="btn-link">結果を確認 →</button>
+      </div>
+      <div id="status-failed" class="hidden error-box">
+        ❌ エラー: <span id="status-error-msg"></span>
+      </div>
+    </section>
+
+    <!-- ─── タブ4: 結果 ─── -->
+    <section id="tab-result" class="tab-pane">
+      <h2>予測結果</h2>
+      <div id="result-none" class="info-box">結果がありません。先に分析を実行してください。</div>
+
+      <div id="result-body" class="hidden">
+        <div class="result-meta" id="result-meta"></div>
+
+        <!-- グラフ -->
+        <div class="chart-container">
+          <img id="result-chart" src="" alt="予測グラフ" class="forecast-chart">
+        </div>
+
+        <!-- 注意喚起 -->
+        <div id="result-warnings"></div>
+
+        <!-- 予測表 -->
+        <h3>予測値一覧</h3>
+        <div class="table-wrap">
+          <table id="result-table">
+            <thead>
+              <tr>
+                <th>タイムスタンプ</th>
+                <th>点推定</th>
+                <th>下限 10%</th>
+                <th>上限 90%</th>
+              </tr>
+            </thead>
+            <tbody id="result-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- 再現情報 -->
+        <details class="repro-details">
+          <summary>再現情報 / 監査情報</summary>
+          <pre id="result-repro"></pre>
+        </details>
+      </div>
+    </section>
+
+    <!-- ─── タブ5: ジョブ履歴 ─── -->
+    <section id="tab-history" class="tab-pane">
+      <h2>ジョブ履歴</h2>
+      <button id="btn-refresh-history" class="btn-secondary">🔄 更新</button>
+      <div id="history-empty" class="info-box hidden">ジョブ履歴がありません。</div>
+      <div class="table-wrap">
+        <table id="history-table" class="hidden">
+          <thead>
+            <tr>
+              <th>開始時刻</th>
+              <th>ファイル名</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>FLAIR セキュア分析環境 &mdash; ローカル専用 (127.0.0.1)</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

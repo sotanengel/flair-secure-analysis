@@ -38,6 +38,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--input", required=True, help="入力 CSV ファイルパス")
+    parser.add_argument("--job-id", default=None, help="ジョブID（省略時は自動生成）")
     parser.add_argument("--datetime-col", default="timestamp", help="日時列名")
     parser.add_argument("--value-col", default="value", help="値列名")
     parser.add_argument("--freq", default=None, help="周波数 (H/D/W/ME など)")
@@ -64,8 +65,8 @@ def main(argv: list[str] | None = None) -> int:
     output_dir = Path(args.output_dir)
     log_dir = Path(args.log_dir)
 
-    # ジョブ ID 生成
-    job_id = str(uuid.uuid4())
+    # ジョブ ID 生成（--job-id 指定があればそれを使用）
+    job_id = args.job_id if args.job_id else str(uuid.uuid4())
     print(f"[worker] job_id={job_id}")
 
     # 監査ロガー初期化

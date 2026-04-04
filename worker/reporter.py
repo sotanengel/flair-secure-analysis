@@ -1,6 +1,6 @@
 """結果出力モジュール。
 
-予測結果を CSV / JSON として output/{job_id}/ 配下へ保存する。
+予測結果を CSV / JSON / PNG グラフとして output/{job_id}/ 配下へ保存する。
 入力要約・設定値・FLAIR バージョン・入力ファイル SHA-256・注意喚起を含める。
 """
 
@@ -132,6 +132,20 @@ def save_results(
         json.dump(report, f, ensure_ascii=False, indent=2)
     saved.append(str(report_json))
 
+    # --- forecast_chart.png ---
+    chart_path = _save_chart(
+        output_dir=output_dir,
+        historical_index=preprocess_result.index,
+        historical_y=preprocess_result.y,
+        future_index=future_index,
+        point=forecast_result.point,
+        lower=forecast_result.lower,
+        upper=forecast_result.upper,
+        title=f"FLAIR 予測結果 — {input_filename}",
+    )
+    if chart_path:
+        saved.append(str(chart_path))
+
     return saved
 
 
@@ -163,3 +177,54 @@ def _generate_quality_warnings(
         )
 
     return warnings
+
+
+def _save_chart(
+    *,
+    output_dir: Path,
+    historical_index: "pd.DatetimeIndex",
+    historical_y: np.ndarray,
+    future_index: "pd.DatetimeIndex",
+    point: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    title: str,
+) -> Path | None:
+    """予測結果の折れ線グラフを PNG で保存する。失敗時は None を返す。"""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")  # GUI なし（サーバー環境）
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+
+        fig, ax = plt.subplots(figsize=(12, 5))
+
+        # 直近 120 点だけ表示（グラフが見やすいように）
+        display_n = min(120, len(historical_y))
+        hist_idx = historical_index[-display_n:]
+        hist_y = historical_y[-display_n:]
+
+        ax.plot(hist_idx, hist_y, color="#4A90D9", linewidth=1.2, label="Historical")
+        ax.plot(future_index, point, color="#E05A2B", linewidth=1.5, label="Forecast (median)")
+        ax.fill_between(
+            future_index, lower, upper,
+            color="#E05A2B", alpha=0.2, label="Forecast interval (10-90%)"
+        )
+
+        # 実績と予測の境界線
+        ax.axvline(x=historical_index[-1], color="gray", linestyle="--", linewidth=0.8)
+
+        ax.set_title(f"FLAIR Forecast — {Path(title).name if '/' in title or chr(92) in title else title}", fontsize=11, pad=10)
+        ax.set_xlabel("Datetime")
+        ax.set_ylabel("Value")
+        ax.legend(loc="upper left", fontsize=9)
+        ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(mdates.AutoDateLocator()))
+        fig.autofmt_xdate()
+        plt.tight_layout()
+
+        chart_path = output_dir / "forecast_chart.png"
+        fig.savefig(str(chart_path), dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        return chart_path
+    except Exception:
+        return None
