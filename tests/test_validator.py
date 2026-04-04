@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 import pytest
 
 from worker.validator import (
-    MAX_FILE_SIZE_BYTES,
     ValidationError,
     compute_sha256,
     sanitize_filename,

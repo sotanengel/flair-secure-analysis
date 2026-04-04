@@ -84,7 +84,7 @@ def upload():
     if size > MAX_UPLOAD_SIZE:
         dest.unlink()
         job_input_dir.rmdir()
-        return jsonify({"error": f"ファイルサイズ上限 (500MB) を超えています"}), 400
+        return jsonify({"error": "ファイルサイズ上限 (500MB) を超えています"}), 400
 
     # CSV の列名だけ取得して返す（設定画面で使用）
     columns = _get_csv_columns(dest)
@@ -305,7 +305,9 @@ def _sanitize_filename(name: str) -> str:
 
 def _is_safe_job_id(job_id: str) -> bool:
     import re
-    return bool(re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", job_id))
+
+    uuid_re = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    return bool(re.fullmatch(uuid_re, job_id))
 
 
 def _get_csv_columns(path: Path) -> list[str]:

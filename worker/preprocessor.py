@@ -161,8 +161,8 @@ def preprocess(
         warnings.append(f"周波数を自動推定しました: '{freq}'")
 
     # 旧来の大文字エイリアスを pandas 2.2+ 対応に正規化
-    _UPPERCASE_TO_NEW = {"H": "h", "T": "min", "M": "ME", "Q": "QE", "A": "YE", "Y": "YE"}
-    freq = _UPPERCASE_TO_NEW.get(freq, freq)
+    _uppercase_to_new = {"H": "h", "T": "min", "M": "ME", "Q": "QE", "A": "YE", "Y": "YE"}
+    freq = _uppercase_to_new.get(freq, freq)
 
     # --- 適合性チェック ---
     n = len(y)
@@ -174,7 +174,8 @@ def preprocess(
     zero_rate = float(np.sum(y == 0) / n)
     if zero_rate > ZERO_RATE_WARN_THRESHOLD:
         warnings.append(
-            f"ゼロ値の割合が高い ({zero_rate:.1%})。断続需要系列には FLAIR は不向きな場合があります。"
+            f"ゼロ値の割合が高い ({zero_rate:.1%})。"
+            "断続需要系列には FLAIR は不向きな場合があります。"
         )
 
     stats = {

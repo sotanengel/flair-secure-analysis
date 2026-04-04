@@ -10,7 +10,7 @@ import csv
 import json
 import platform
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,7 @@ from worker.preprocessor import PreprocessResult
 
 
 def _utcnow_iso() -> str:
-    return datetime.now(tz=timezone.utc).isoformat()
+    return datetime.now(tz=UTC).isoformat()
 
 
 def _array_to_list(arr: np.ndarray) -> list[float]:
@@ -62,7 +62,7 @@ def save_results(
     with forecast_csv.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["timestamp", "point", "lower_10", "upper_90"])
-        for ts, pt, lo, hi in zip(
+        for ts, pt, lo, hi in zip(  # noqa: B905
             future_index,
             forecast_result.point,
             forecast_result.lower,
@@ -159,9 +159,8 @@ def _generate_quality_warnings(
 
     # データ長不足
     if n < 30:
-        warnings.append(
-            f"[注意] データ点数が非常に少なすぎます ({n} 点)。予測精度が著しく低下する可能性があります。"
-        )
+        msg = f"[注意] データ点数が非常に少なすぎます ({n} 点)。"
+        warnings.append(msg + "予測精度が著しく低下する可能性があります。")
 
     # 周波数不一致の可能性
     if fc.freq in ("D", "H") and n < 14:
@@ -182,9 +181,9 @@ def _generate_quality_warnings(
 def _save_chart(
     *,
     output_dir: Path,
-    historical_index: "pd.DatetimeIndex",
+    historical_index: pd.DatetimeIndex,
     historical_y: np.ndarray,
-    future_index: "pd.DatetimeIndex",
+    future_index: pd.DatetimeIndex,
     point: np.ndarray,
     lower: np.ndarray,
     upper: np.ndarray,
@@ -194,8 +193,8 @@ def _save_chart(
     try:
         import matplotlib
         matplotlib.use("Agg")  # GUI なし（サーバー環境）
-        import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
+        import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(12, 5))
 
@@ -214,7 +213,8 @@ def _save_chart(
         # 実績と予測の境界線
         ax.axvline(x=historical_index[-1], color="gray", linestyle="--", linewidth=0.8)
 
-        ax.set_title(f"FLAIR Forecast — {Path(title).name if '/' in title or chr(92) in title else title}", fontsize=11, pad=10)
+        chart_title = f"FLAIR Forecast — {title}"
+        ax.set_title(chart_title, fontsize=11, pad=10)
         ax.set_xlabel("Datetime")
         ax.set_ylabel("Value")
         ax.legend(loc="upper left", fontsize=9)

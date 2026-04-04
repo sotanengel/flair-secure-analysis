@@ -107,7 +107,7 @@ def validate_file(
                 f"列数が上限を超えています: {len(columns)} (上限 {MAX_COLUMNS})"
             )
 
-        for row in reader:
+        for _row in reader:
             row_count += 1
             if row_count > MAX_ROWS:
                 raise ValidationError(

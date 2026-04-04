@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from worker.analyzer import AnalyzerError, ForecastResult, run_forecast
+from worker.analyzer import ForecastResult, run_forecast
 
 
 class TestRunForecast:
