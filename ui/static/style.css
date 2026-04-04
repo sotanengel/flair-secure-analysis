@@ -263,8 +263,43 @@ tr:hover td { background: #f8fafc; }
 .meta-item label { color: var(--c-muted); display: block; font-size: 11px; margin-bottom: 2px; }
 .meta-item span  { font-weight: 600; word-break: break-all; }
 
-.chart-container { margin: 16px 0; }
-.forecast-chart  { max-width: 100%; border-radius: var(--radius); box-shadow: var(--shadow); }
+.chart-container {
+  margin: 16px 0;
+  position: relative;
+}
+.forecast-canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  background: var(--c-surface);
+  cursor: crosshair;
+}
+.chart-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 0;
+}
+.chart-tooltip {
+  position: absolute;
+  background: rgba(30, 41, 59, .92);
+  color: #f8fafc;
+  font-size: 12px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.7;
+  z-index: 10;
+}
 
 .repro-details {
   margin-top: 24px;

@@ -132,6 +132,16 @@ def save_results(
         json.dump(report, f, ensure_ascii=False, indent=2)
     saved.append(str(report_json))
 
+    # --- history.json（前処理済み実データ。ブラウザ側インタラクティブグラフ用）---
+    history_json = output_dir / "history.json"
+    history_data = [
+        {"timestamp": ts.isoformat(), "value": round(float(v), 6)}
+        for ts, v in zip(preprocess_result.index, preprocess_result.y)  # noqa: B905
+    ]
+    with history_json.open("w", encoding="utf-8") as f:
+        json.dump({"rows": history_data}, f, ensure_ascii=False)
+    saved.append(str(history_json))
+
     # --- forecast_chart.png ---
     chart_path = _save_chart(
         output_dir=output_dir,

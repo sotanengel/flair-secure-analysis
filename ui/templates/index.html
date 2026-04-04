@@ -128,7 +128,12 @@
 
         <!-- グラフ -->
         <div class="chart-container">
-          <img id="result-chart" src="" alt="予測グラフ" class="forecast-chart">
+          <canvas id="forecast-canvas" class="forecast-canvas"></canvas>
+          <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+          <div class="chart-actions">
+            <a id="btn-dl-png" class="btn-secondary btn-sm" download="forecast_chart.png">⬇ PNG ダウンロード</a>
+            <a id="btn-dl-csv" class="btn-secondary btn-sm" download="forecast.csv">⬇ CSV ダウンロード</a>
+          </div>
         </div>
 
         <!-- 注意喚起 -->

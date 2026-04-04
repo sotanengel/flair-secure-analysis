@@ -211,11 +211,25 @@ def job_result(job_id: str):
     rows = []
     if forecast_path.exists():
         import csv as csv_mod
+
         with forecast_path.open() as f:
             reader = csv_mod.DictReader(f)
             rows = list(reader)
 
     return jsonify({"report": report, "forecast_rows": rows})
+
+
+# ── API: 予測 CSV ダウンロード ───────────────────────────────────────────────
+@app.route("/api/result/<job_id>/forecast.csv")
+def job_forecast_csv(job_id: str):
+    if not _is_safe_job_id(job_id):
+        return jsonify({"error": "無効な job_id"}), 400
+
+    forecast_path = OUTPUT_DIR / job_id / "forecast.csv"
+    if not forecast_path.exists():
+        return jsonify({"error": "CSVが見つかりません"}), 404
+    return send_file(str(forecast_path), mimetype="text/csv",
+                     as_attachment=True, download_name="forecast.csv")
 
 
 # ── API: グラフ画像 ──────────────────────────────────────────────────────────
@@ -228,6 +242,23 @@ def job_chart(job_id: str):
     if not chart_path.exists():
         return jsonify({"error": "グラフが見つかりません"}), 404
     return send_file(str(chart_path), mimetype="image/png")
+
+
+# ── API: 実データ（ブラウザ側グラフ用） ────────────────────────────────────
+@app.route("/api/history/<job_id>")
+def job_history(job_id: str):
+    if not _is_safe_job_id(job_id):
+        return jsonify({"error": "無効な job_id"}), 400
+
+    history_path = OUTPUT_DIR / job_id / "history.json"
+    if not history_path.exists():
+        return jsonify({"error": "履歴データが見つかりません"}), 404
+
+    import json as _json
+
+    with history_path.open(encoding="utf-8") as f:
+        data = _json.load(f)
+    return jsonify(data)
 
 
 # ── API: ジョブ一覧 ──────────────────────────────────────────────────────────

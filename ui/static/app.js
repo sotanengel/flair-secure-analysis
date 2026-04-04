@@ -234,11 +234,6 @@ function renderResult(jobId, data) {
     metaItem("シード", report.forecast?.seed ?? ""),
   ].join("");
 
-  // グラフ（チャートが生成されている場合）
-  const chartImg = document.getElementById("result-chart");
-  chartImg.src = `/api/chart/${jobId}?t=${Date.now()}`;
-  chartImg.onerror = () => { chartImg.style.display = "none"; };
-
   // 注意喚起
   const warnEl = document.getElementById("result-warnings");
   warnEl.innerHTML = "";
@@ -249,6 +244,10 @@ function renderResult(jobId, data) {
       report.warnings.map((w) => `<li>${escHtml(w)}</li>`).join("") + "</ul>";
     warnEl.appendChild(box);
   }
+
+  // ダウンロードリンク
+  document.getElementById("btn-dl-png").href = `/api/chart/${jobId}`;
+  document.getElementById("btn-dl-csv").href = `/api/result/${jobId}/forecast.csv`;
 
   // 予測表
   const tbody = document.getElementById("result-tbody");
@@ -265,11 +264,248 @@ function renderResult(jobId, data) {
   // 再現情報
   document.getElementById("result-repro").textContent =
     JSON.stringify(report.reproducibility, null, 2);
+
+  // インタラクティブグラフを非同期で描画
+  fetchAndDrawChart(jobId, forecast_rows || []);
 }
 
 function metaItem(label, value) {
   return `<div class="meta-item"><label>${escHtml(label)}</label><span>${escHtml(String(value ?? ""))}</span></div>`;
 }
+
+// ── インタラクティブグラフ描画 ────────────────────────────────────────────
+async function fetchAndDrawChart(jobId, forecastRows) {
+  const canvas = document.getElementById("forecast-canvas");
+  const tooltip = document.getElementById("chart-tooltip");
+  try {
+    const res = await fetch(`/api/history/${jobId}`);
+    if (!res.ok) return;
+    const { rows: histRows } = await res.json();
+    drawForecastChart(canvas, tooltip, histRows, forecastRows);
+  } catch (_) {}
+}
+
+function drawForecastChart(canvas, tooltip, histRows, fcRows) {
+  const DPR = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth || 800;
+  const H = Math.round(W * 0.42);
+  const PAD = { top: 24, right: 20, bottom: 56, left: 64 };
+
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width  = W + "px";
+  canvas.style.height = H + "px";
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(DPR, DPR);
+
+  // --- データ変換 ---
+  const parseTs = (s) => new Date(s).getTime();
+  const hist = histRows.map((r) => ({ t: parseTs(r.timestamp), v: r.value }));
+  const fc   = fcRows.map((r) => ({
+    t: parseTs(r.timestamp), v: parseFloat(r.point),
+    lo: parseFloat(r.lower_10), hi: parseFloat(r.upper_90),
+  }));
+
+  const allT  = [...hist.map((r) => r.t), ...fc.map((r) => r.t)];
+  const allV  = [...hist.map((r) => r.v),
+    ...fc.map((r) => r.v), ...fc.map((r) => r.lo), ...fc.map((r) => r.hi)];
+  const minT = Math.min(...allT), maxT = Math.max(...allT);
+  const minV = Math.min(...allV), maxV = Math.max(...allV);
+  const vRange = maxV - minV || 1;
+  const padV   = vRange * 0.08;
+
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top  - PAD.bottom;
+
+  const xOf = (t) => PAD.left + ((t - minT) / (maxT - minT)) * plotW;
+  const yOf = (v) => PAD.top  + (1 - (v - (minV - padV)) / (vRange + 2 * padV)) * plotH;
+
+  // --- 背景 ---
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  // --- グリッド & Y軸ラベル ---
+  const yTicks = 5;
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.lineWidth   = 1;
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillStyle = "#6b7280";
+  ctx.textAlign = "right";
+  for (let i = 0; i <= yTicks; i++) {
+    const v = (minV - padV) + (vRange + 2 * padV) * (i / yTicks);
+    const y = yOf(v);
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    ctx.fillText(fmtAxis(v), PAD.left - 6, y + 4);
+  }
+
+  // --- X軸ラベル ---
+  const xTicks = Math.min(6, hist.length + fc.length);
+  ctx.textAlign = "center";
+  for (let i = 0; i <= xTicks; i++) {
+    const t = minT + (maxT - minT) * (i / xTicks);
+    const x = xOf(t);
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText(fmtAxisDate(t), x, H - PAD.bottom + 18);
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, H - PAD.bottom); ctx.stroke();
+  }
+
+  // --- 境界線（実績 / 予測） ---
+  if (hist.length && fc.length) {
+    const xBound = xOf(hist[hist.length - 1].t);
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(xBound, PAD.top); ctx.lineTo(xBound, H - PAD.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("▶ 予測", xBound + 24, PAD.top + 14);
+  }
+
+  // --- 信頼区間シェーディング ---
+  if (fc.length) {
+    ctx.beginPath();
+    ctx.moveTo(xOf(fc[0].t), yOf(fc[0].hi));
+    fc.forEach((r) => ctx.lineTo(xOf(r.t), yOf(r.hi)));
+    for (let i = fc.length - 1; i >= 0; i--) ctx.lineTo(xOf(fc[i].t), yOf(fc[i].lo));
+    ctx.closePath();
+    ctx.fillStyle = "rgba(251, 146, 60, 0.18)";
+    ctx.fill();
+
+    // 上限・下限ライン
+    ctx.strokeStyle = "rgba(251, 146, 60, 0.5)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ["hi", "lo"].forEach((key) => {
+      ctx.beginPath();
+      fc.forEach((r, i) => (i === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, xOf(r.t), yOf(r[key])));
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  // --- 実績ライン（青） ---
+  if (hist.length) {
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    hist.forEach((r, i) => (i === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, xOf(r.t), yOf(r.v)));
+    ctx.stroke();
+  }
+
+  // --- 予測点推定ライン（オレンジ） ---
+  if (fc.length) {
+    // 接続：最後の実績点から予測開始へ
+    if (hist.length) {
+      ctx.strokeStyle = "#f97316";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      const last = hist[hist.length - 1];
+      ctx.moveTo(xOf(last.t), yOf(last.v));
+      fc.forEach((r) => ctx.lineTo(xOf(r.t), yOf(r.v)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // --- 凡例 ---
+  const legend = [
+    { color: "#2563eb", dash: false, label: "実データ" },
+    { color: "#f97316", dash: true,  label: "予測（点推定）" },
+    { color: "rgba(251,146,60,.5)", dash: false, label: "予測（10%–90% 区間）", fill: true },
+  ];
+  let lx = PAD.left;
+  legend.forEach(({ color, dash, label, fill }) => {
+    ctx.beginPath();
+    if (fill) {
+      ctx.fillStyle = "rgba(251, 146, 60, 0.28)";
+      ctx.fillRect(lx, H - PAD.bottom + 30, 22, 10);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lx, H - PAD.bottom + 30, 22, 10);
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash(dash ? [5, 3] : []);
+      ctx.moveTo(lx, H - PAD.bottom + 35);
+      ctx.lineTo(lx + 22, H - PAD.bottom + 35);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = "#374151";
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(label, lx + 26, H - PAD.bottom + 39);
+    lx += 26 + ctx.measureText(label).width + 20;
+  });
+
+  // --- ホバー tooltip ---
+  // 全描画データをまとめる
+  const allPoints = [
+    ...hist.map((r) => ({ t: r.t, v: r.v, type: "hist" })),
+    ...fc.map((r)  => ({ t: r.t, v: r.v, lo: r.lo, hi: r.hi, type: "fc" })),
+  ];
+  allPoints.sort((a, b) => a.t - b.t);
+
+  canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    // 最も近い x の点を探す
+    let best = null, bestDx = Infinity;
+    allPoints.forEach((p) => {
+      const dx = Math.abs(xOf(p.t) - mx);
+      if (dx < bestDx) { bestDx = dx; best = p; }
+    });
+    if (!best || bestDx > 30) { tooltip.classList.add("hidden"); return; }
+
+    const py = e.clientY - rect.top;
+    let html = `<strong>${fmtAxisDateFull(best.t)}</strong><br>`;
+    if (best.type === "hist") {
+      html += `実データ: <b>${fmtNum(best.v)}</b>`;
+    } else {
+      html += `予測: <b>${fmtNum(best.v)}</b><br>`;
+      html += `区間: ${fmtNum(best.lo)} – ${fmtNum(best.hi)}`;
+    }
+    tooltip.innerHTML = html;
+    tooltip.classList.remove("hidden");
+
+    const ttW = tooltip.offsetWidth || 160;
+    const ttH = tooltip.offsetHeight || 60;
+    let tx = xOf(best.t) + 12;
+    let ty = py - ttH - 8;
+    if (tx + ttW > W - 10) tx = xOf(best.t) - ttW - 12;
+    if (ty < 4) ty = py + 16;
+    tooltip.style.left = tx + "px";
+    tooltip.style.top  = ty + "px";
+  };
+  canvas.onmouseleave = () => tooltip.classList.add("hidden");
+}
+
+// 軸用フォーマット
+function fmtAxis(v) {
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + "M";
+  if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + "k";
+  return v.toFixed(Math.abs(v) < 10 ? 2 : 0);
+}
+function fmtAxisDate(ts) {
+  const d = new Date(ts);
+  const mo = d.getMonth() + 1, da = d.getDate();
+  const h  = d.getHours();
+  if (h !== 0) return `${mo}/${da} ${String(h).padStart(2,"0")}:00`;
+  return `${d.getFullYear()}/${mo}/${da}`;
+}
+function fmtAxisDateFull(ts) {
+  return new Date(ts).toLocaleString("ja-JP", {
+    month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit",
+  });
+}
+
 
 // ── ジョブ履歴 ────────────────────────────────────────────────────────────
 document.getElementById("btn-refresh-history").addEventListener("click", loadHistory);
