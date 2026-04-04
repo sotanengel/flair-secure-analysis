@@ -1,7 +1,8 @@
-# FLAIR セキュア分析コンテナ環境 (Phase 1)
+# FLAIR セキュア分析コンテナ環境
 
 FLAIR (`flaircast`) を使った**完全オフライン・ローカル分析**環境です。  
-ファイルドロップ → 前処理 → 予測 → CSV/JSON 出力 → 監査ログ記録 を一貫して行います。
+ファイルドロップ → 前処理 → 予測 → CSV/JSON/グラフ出力 → 監査ログ記録 を一貫して行います。  
+**ブラウザ UI**（Phase 2）と **CLI**（Phase 1）の両方で利用できます。
 
 ## セキュリティ設計
 
@@ -30,6 +31,45 @@ make run INPUT=work/input/your_data.csv DATETIME_COL=timestamp VALUE_COL=value
 make build
 ```
 
+---
+
+## Web UI の使い方（Phase 2）
+
+### 起動
+
+```bash
+make install   # 初回のみ
+make ui        # http://127.0.0.1:5000 で起動
+```
+
+ブラウザで `http://127.0.0.1:5000` を開いてください（ローカルのみアクセス可）。
+
+### 画面構成
+
+| タブ | 説明 |
+|---|---|
+| 📂 **ファイル投入** | CSV ファイルをドラッグ＆ドロップまたはクリック選択でアップロード |
+| ⚙️ **設定** | 列名・予測期間・周波数・乱数シードなどを入力し分析を実行 |
+| ⏳ **実行状況** | 分析の進行状況をリアルタイムにポーリングで確認 |
+| 📊 **結果** | 予測グラフ・数値テーブル・レポートをブラウザ内で閲覧、CSV ダウンロード |
+| 🗂 **ジョブ履歴** | 過去の実行ジョブ一覧と再表示 |
+
+### 手順
+
+1. **📂 ファイル投入** — CSV を選択してアップロード
+2. **⚙️ 設定** タブへ移動し、以下を入力して **分析開始**：
+   - `日時列名`（例: `timestamp`）
+   - `値列名`（例: `value`）
+   - `周波数`（`h` = 毎時、`D` = 日次、`W` = 週次 など。空欄で自動推定）
+   - `予測ホライズン`（何ステップ先まで予測するか）
+   - `乱数シード`（再現性を持たせる場合に指定）
+3. **⏳ 実行状況** タブで完了を待つ（自動ポーリング）
+4. **📊 結果** タブで予測グラフ・テーブルを確認し、必要に応じて CSV ダウンロード
+
+> **注意**: UI もオフライン動作です。外部リソース（CDN 等）は一切読み込みません。
+
+---
+
 ## ディレクトリ構成
 
 ```
@@ -39,8 +79,12 @@ flair-secure-analysis/
 │   ├── validator.py    # 入力ファイル検証
 │   ├── preprocessor.py # 前処理
 │   ├── analyzer.py     # FLAIR 予測
-│   ├── reporter.py     # CSV/JSON 出力
+│   ├── reporter.py     # CSV/JSON/グラフ出力
 │   └── audit_logger.py # 監査ログ
+├── ui/                 # Web UI（Flask）
+│   ├── app.py          # Flask サーバー
+│   ├── templates/      # HTML テンプレート
+│   └── static/         # CSS / JS（外部 CDN なし）
 ├── tests/              # pytest テスト
 ├── scripts/            # build / run / smoke-test スクリプト
 ├── work/
@@ -85,9 +129,10 @@ python -m worker.main \
 
 ```
 work/output/{job_id}/
-├── input/            # 入力ファイルのコピー（隔離）
-├── forecast.csv      # 予測結果（timestamp, point, lower_10, upper_90）
-└── report.json       # 入力要約・設定・バージョン・SHA-256・注意喚起
+├── input/              # 入力ファイルのコピー（隔離）
+├── forecast.csv        # 予測結果（timestamp, point, lower_10, upper_90）
+├── report.json         # 入力要約・設定・バージョン・SHA-256・注意喚起
+└── forecast_chart.png  # 予測グラフ（実績 + 信頼区間）
 ```
 
 ## テスト
