@@ -1,0 +1,43 @@
+x-security-base: &security-base
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 256
+
+x-flair-worker-base: &flair-worker-base
+  build:
+    context: .
+    dockerfile: Containerfile
+  image: flair-secure-analysis:latest
+  user: "${WORKER_UID:-1000}:${WORKER_GID:-1000}"
+  read_only: true
+  stdin_open: false
+  tty: false
+  tmpfs:
+    - /work/tmp:rw,nosuid,nodev,noexec,size=268435456
+    - /tmp:rw,nosuid,nodev,noexec,size=67108864
+  volumes:
+    - ./work/input:/work/input:ro
+    - ./work/output:/work/output:rw
+    - ./work/logs:/work/logs:rw
+  <<: *security-base
+
+services:
+  # オフライン分析ワーカー（完全ネットワーク遮断）
+  worker:
+    <<: *flair-worker-base
+    network_mode: none
+    environment:
+      PYTHONPATH: /app
+    profiles:
+      - run
+
+  # ビルド・テスト用（ネットワーク有効）
+  worker-test:
+    <<: *flair-worker-base
+    environment:
+      PYTHONPATH: /app
+    entrypoint: ["/app/.venv/bin/python", "-m", "pytest", "/app/tests", "-v"]
+    profiles:
+      - test
