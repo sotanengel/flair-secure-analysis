@@ -38,3 +38,7 @@ known-first-party = ["worker"]
 testpaths = ["tests"]
 addopts = "-v"
 pythonpath = ["."]
+
+[[tool.uv.index]]
+url = "https://pypi.flatt.tech/simple/"
+default = true
