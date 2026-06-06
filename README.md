@@ -1,7 +1,7 @@
 # FLAIR セキュア分析コンテナ環境
 
-FLAIR (`flaircast`) を使った**完全オフライン・ローカル分析**環境です。  
-ファイルドロップ → 前処理 → 予測 → CSV/JSON/グラフ出力 → 監査ログ記録 を一貫して行います。  
+FLAIR (`flaircast`) を使った**完全オフライン・ローカル分析**環境です。
+ファイルドロップ → 前処理 → 予測 → CSV/JSON/グラフ出力 → 監査ログ記録 を一貫して行います。
 **ブラウザ UI**（Phase 2）と **CLI**（Phase 1）の両方で利用できます。
 
 ## セキュリティ設計
@@ -151,5 +151,5 @@ make lint   # ruff
 
 ## ライセンス
 
-本プロジェクトのコード: [Apache License 2.0](LICENSE)  
+本プロジェクトのコード: [Apache License 2.0](LICENSE)
 FLAIR (flaircast): MIT
