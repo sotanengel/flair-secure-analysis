@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-      - uses: flatt-security/setup-takumi-guard-npm@v1.1.0
+      - uses: flatt-security/setup-takumi-guard-npm@v1.1.1
       - name: Install and scan npm dependencies
         run: |
           if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
